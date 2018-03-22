@@ -15,12 +15,12 @@ var playerPos = {
   Lane4: {x: 421, y: 377}
 };
 
-var clientPos = {
-  Lane1: {x: 112, y: 90},
-  Lane2: {x: 82, y: 185},
-  Lane3: {x: 50, y: 281},
-  Lane4: {x: 18, y: 377}
-}
+var clientPos = [
+  {x: 113, y: 90},
+  {x: 83, y: 185},
+  {x: 51, y: 281},
+  {x: 19, y: 377}
+  ];
 
 var OBJECT_PLAYER = 1,
     OBJECT_BEER = 2,
@@ -93,6 +93,11 @@ var playGame = function() {
   board.add(new DeadZone(50, 281));
   board.add(new DeadZone(18, 377));
 
+  for (let i = 0; i < 4; i++) {
+    const r = 2;
+    board.add(new Spawner(clientPos[i], 3, 1 + r*i));
+  }
+
 
   // board.add(new PlayerShip());
   // board.add(new Level(level1,winGame));
@@ -138,13 +143,13 @@ var Player = function() {
     else if(Game.keys['Up'] && this.x === playerPos.Lane4.x && this.cooldown < 0) { this.x = playerPos.Lane3.x; this.y = playerPos.Lane3.y;  this.cooldown = this.spd; }
     // Beers
     else if(Game.keys['Space'] && this.x === playerPos.Lane1.x && this.beerCooldown < 0) { this.board.add(new Beer(this.x, this.y, -23)); this.beerCooldown = this.beerSpd; 
-                                                                                           this.board.add(new Client(112, this.y, 23));}
+                                                                                           /*this.board.add(new Client(112, this.y, 23));*/}
     else if(Game.keys['Space'] && this.x === playerPos.Lane2.x && this.beerCooldown < 0) { this.board.add(new Beer(this.x, this.y, -33)); this.beerCooldown = this.beerSpd; 
-                                                                                           this.board.add(new Client(82, this.y, 33));}
+                                                                                           /*this.board.add(new Client(82, this.y, 33));*/}
     else if(Game.keys['Space'] && this.x === playerPos.Lane3.x && this.beerCooldown < 0) { this.board.add(new Beer(this.x, this.y, -43)); this.beerCooldown = this.beerSpd;
-                                                                                           this.board.add(new Client(50, this.y, 43));}
+                                                                                           /*this.board.add(new Client(50, this.y, 43));*/}
     else if(Game.keys['Space'] && this.x === playerPos.Lane4.x && this.beerCooldown < 0) { this.board.add(new Beer(this.x, this.y, -53)); this.beerCooldown = this.beerSpd;
-                                                                                           this.board.add(new Client(18, this.y, 53));}
+                                                                                           /*this.board.add(new Client(18, this.y, 53));*/}
   };
 };
 Player.prototype = new Sprite();
@@ -163,8 +168,10 @@ var Beer = function(x, y, vx) {
     if(collision) {
       this.board.remove(this);
       this.board.add(new Glass(this.x, this.y, -vx));
+      GameManager.notifyGlasses();
     }
-    else if(collisionDeadZone) { 
+    else if(collisionDeadZone) {
+      GameManager.notifyDead();
       this.board.remove(this); 
     }
   }
@@ -184,8 +191,10 @@ var Glass = function(x, y, vx) {
     var collisionDeadZone = this.board.collide(this,OBJECT_DEADZONE); 
     if (collisionPlayer) {
       this.board.remove(this);
+      GameManager.notifyServed();
     }
-    else if(collisionDeadZone) { 
+    else if(collisionDeadZone) {
+      GameManager.notifyDead();
       this.board.remove(this); 
     }
   }
@@ -203,11 +212,17 @@ var Client = function(x, y, vx) {
     this.x += this.vx * dt;
     var collision = this.board.collide(this,OBJECT_BEER);
     var collisionDeadZone = this.board.collide(this,OBJECT_DEADZONE);
-    if(collision) {
+    var collisionPlayer = this.board.collide(this,OBJECT_PLAYER);
+    if (collision) {
       this.board.remove(this);
     }
-    else if(collisionDeadZone) { 
-      this.board.remove(this); 
+    else if (collisionDeadZone) {
+      GameManager.notifyDead();
+      this.board.remove(this);
+    }
+    else if (collisionPlayer) {
+      GameManager.notifyDead();
+      this.board.remove(this);
     }
   }
 }
@@ -219,18 +234,78 @@ var DeadZone = function(x, y) {
   this.x = x;
   this.y = y;
 
-  this.step = function(dt) {
-    var collisionBeer = this.board.collide(this,OBJECT_BEER);
-    var collisionGlass = this.board.collide(this,OBJECT_GLASS);
-    var collisionClient = this.board.collide(this,OBJECT_CLIENT);
-
-    if(collisionBeer || collisionGlass || collisionClient) {
-      //Lose game
-    }
-  }
+  this.step = function(dt) { }
 }
 DeadZone.prototype = new Sprite();
 DeadZone.prototype.type = OBJECT_DEADZONE;
+
+var Spawner = function(coord, nClients, freq) {
+  this.initClients = nClients;
+  this.nClients = this.initClients;
+  this.freq = freq;
+  this.time = this.freq;
+  this.client = new Client(coord.x, coord.y, 23);
+
+  this.reset = function() {
+    this.time = this.freq;
+    this.nClients = this.initClients;
+    GameManager.notifyClients(this.nClients);
+  };
+  this.reset();
+
+  this.step = function(dt) {
+    this.time -= dt;
+
+    if (this.nClients > 0 && this.time < 0) {
+      this.time = this.freq;
+
+      this.board.add(Object.create(this.client));
+      this.nClients--;
+    }
+  };
+  this.draw = function() { }
+}
+
+var GameManager = new function() {
+  this.npcs = 0;
+  this.glasses = 0;
+  this.dead = 0;
+
+  this.reset = function() {
+    this.npcs = 0;
+    this.glasses = 0;
+    this.dead = 0;
+  };
+
+  this.notifyClients = function(n) {
+    this.npcs += n;
+  };
+
+  this.notifyGlasses = function() {
+    this.glasses++;
+    this.check();
+  };
+
+  this.notifyServed = function() {
+    this.glasses--;
+    this.npcs--;
+    this.check();
+  };
+
+  this.notifyDead = function() {
+    this.dead++;
+    this.check();
+  };
+
+  this.check = function() {
+    if (this.dead) {
+      console.log("You lose.");
+    }
+    else if (!this.npcs && !this.glasses) {
+      console.log("You win!");
+    }
+  };
+}
 
 // var Starfield = function(speed,opacity,numStars,clear) {
 
