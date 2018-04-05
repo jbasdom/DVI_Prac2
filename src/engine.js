@@ -84,7 +84,7 @@ var Game = new function() {
     if(dt > maxTime) { dt = maxTime; }
 
     for(var i=0,len = boards.length;i<len;i++) {
-      if(boards[i]) { 
+      if(boards[i] && boards[i].active) { 
         boards[i].step(dt);
         boards[i].draw(Game.ctx);
       }
@@ -94,6 +94,9 @@ var Game = new function() {
   
   // Change an active game board
   this.setBoard = function(num,board) { boards[num] = board; };
+  this.dropBoard = function(num) { this.boards = this.boards.splice(num, 1); };
+  this.activateBoard = function(num) { boards[num].activate(); };
+  this.deactivateBoard = function(num) { boards[num].deactivate(); };
 
 
   this.setupMobile = function() {
@@ -163,10 +166,14 @@ var SpriteSheet = new function() {
 };
 
 var TitleScreen = function TitleScreen(title,subtitle,callback) {
-  var up = false;
+  let up = false;
   this.step = function(dt) {
-    if(!Game.keys['fire']) up = true;
-    if(up && Game.keys['fire'] && callback) callback();
+    if(!Game.keys['Space']) up = true;
+    if(up && Game.keys['Space'] && callback) {
+      up = false;
+      Game.keys['Space'] = false;
+      callback();
+    }
   };
 
   this.draw = function(ctx) {
@@ -189,8 +196,9 @@ var TitleScreen = function TitleScreen(title,subtitle,callback) {
 };
 
 
-var GameBoard = function() {
-  var board = this;
+const GameBoard = function() {
+  let board = this;
+  let active = false;
 
   // The current list of objects
   this.objects = [];
@@ -231,10 +239,11 @@ var GameBoard = function() {
 
   // Call the same method on all current objects 
   this.iterate = function(funcName) {
-     var args = Array.prototype.slice.call(arguments,1);
-     for(var i=0,len=this.objects.length;i<len;i++) {
-       var obj = this.objects[i];
-       obj[funcName].apply(obj,args);
+    if (!this.active) return;
+     const args = Array.prototype.slice.call(arguments, 1);
+     for (let i = 0, len=this.objects.length; i < len; i++) {
+       const obj = this.objects[i];
+       obj[funcName].apply(obj, args);
      }
   };
 
@@ -248,14 +257,15 @@ var GameBoard = function() {
 
   // Call step on all objects and them delete
   // any object that have been marked for removal
-  this.step = function(dt) { 
+  this.step = function(dt) {
+    if (!this.active) return;
     this.resetRemoved();
     this.iterate('step',dt);
     this.finalizeRemoved();
   };
 
   // Draw all the objects
-  this.draw= function(ctx) {
+  this.draw = function(ctx) {
     this.iterate('draw',ctx);
   };
 
@@ -277,6 +287,13 @@ var GameBoard = function() {
     });
   };
 
+  this.activate = function() {
+    this.active = true;
+  };
+
+  this.deactivate = function() {
+    this.active = false;
+  };
 
 };
 
