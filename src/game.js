@@ -53,12 +53,17 @@ const BoardType = {
 var startGame = function() {
   const ua = navigator.userAgent.toLowerCase();
 
+  initAll();
+  Game.activateBoard(BoardType.TITLE);
+};
+
+var initAll = function() {
   const title = new GameBoard();
   title.add(new TitleScreen("Tapper", "Press SPACE to start playing", playGame));
   Game.setBoard(BoardType.TITLE, title);
 
   const victory = new GameBoard();
-  victory.add(new TitleScreen("You win!", "Press SPACE to splay again", playGame));
+  victory.add(new TitleScreen("You win!", "Press SPACE to play again", playGame));
   Game.setBoard(BoardType.VICTORY, victory);
 
   const loss = new GameBoard();
@@ -88,15 +93,13 @@ var startGame = function() {
   board.add(new Spawner(clientPos[1], 1, 1 + r*1))
   board.add(new Spawner(clientPos[3], 1, 2 + r*1))
   board.add(new Spawner(clientPos[2], 2, 1 + r*2))
+
   Game.setBoard(BoardType.ENTITIES, board);
 
   const wall = new GameBoard();
   wall.add(new LeftWall());
   Game.setBoard(BoardType.LEFTWALL, wall);
-
-  Game.activateBoard(BoardType.TITLE);
-};
-
+}
 
 // Activates game boards
 var activateGame = function() {
@@ -104,14 +107,14 @@ var activateGame = function() {
   Game.deactivateBoard(BoardType.VICTORY);
   Game.deactivateBoard(BoardType.LOSS);
 
-  Game.activateBoard(BoardType.SCENARIO);
   Game.activateBoard(BoardType.ENTITIES);
+  Game.activateBoard(BoardType.SCENARIO);
   Game.activateBoard(BoardType.LEFTWALL);
 }
 
 var deactivateGame = function() {
-  Game.deactivateBoard(BoardType.SCENARIO);
   Game.deactivateBoard(BoardType.ENTITIES);
+  Game.deactivateBoard(BoardType.SCENARIO);
   Game.deactivateBoard(BoardType.LEFTWALL);
 }
 
@@ -293,6 +296,7 @@ var GameManager = new function() {
     this.glasses = 0;
     this.dead = 0;
   };
+  this.reset();
 
   this.notifyClients = function(n) {
     this.npcs += n;

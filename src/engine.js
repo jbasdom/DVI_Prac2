@@ -166,10 +166,14 @@ var SpriteSheet = new function() {
 };
 
 var TitleScreen = function TitleScreen(title,subtitle,callback) {
-  var up = false;
+  let up = false;
   this.step = function(dt) {
     if(!Game.keys['Space']) up = true;
-    if(up && Game.keys['Space'] && callback) callback();
+    if(up && Game.keys['Space'] && callback) {
+      up = false;
+      Game.keys['Space'] = false;
+      callback();
+    }
   };
 
   this.draw = function(ctx) {
@@ -235,10 +239,11 @@ const GameBoard = function() {
 
   // Call the same method on all current objects 
   this.iterate = function(funcName) {
-     var args = Array.prototype.slice.call(arguments,1);
-     for(var i=0,len=this.objects.length;i<len;i++) {
-       var obj = this.objects[i];
-       obj[funcName].apply(obj,args);
+    if (!this.active) return;
+     const args = Array.prototype.slice.call(arguments, 1);
+     for (let i = 0, len=this.objects.length; i < len; i++) {
+       const obj = this.objects[i];
+       obj[funcName].apply(obj, args);
      }
   };
 
