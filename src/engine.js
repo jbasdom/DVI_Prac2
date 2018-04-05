@@ -84,7 +84,7 @@ var Game = new function() {
     if(dt > maxTime) { dt = maxTime; }
 
     for(var i=0,len = boards.length;i<len;i++) {
-      if(boards[i]) { 
+      if(boards[i] && boards[i].active) { 
         boards[i].step(dt);
         boards[i].draw(Game.ctx);
       }
@@ -257,14 +257,15 @@ const GameBoard = function() {
 
   // Call step on all objects and them delete
   // any object that have been marked for removal
-  this.step = function(dt) { 
+  this.step = function(dt) {
+    if (!this.active) return;
     this.resetRemoved();
     this.iterate('step',dt);
     this.finalizeRemoved();
   };
 
   // Draw all the objects
-  this.draw= function(ctx) {
+  this.draw = function(ctx) {
     this.iterate('draw',ctx);
   };
 
@@ -288,9 +289,6 @@ const GameBoard = function() {
 
   this.activate = function() {
     this.active = true;
-    this.resetRemoved();
-    this.iterate('reset');
-    this.finalizeRemoved();
   };
 
   this.deactivate = function() {

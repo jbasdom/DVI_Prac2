@@ -37,24 +37,15 @@ const BoardType = {
   LEFTWALL: 5
 }
 
-// var level1 = [
-//  // Start,   End, Gap,  Type,   Override
-//   [ 0,      4000,  500, 'step' ],
-//   [ 6000,   13000, 800, 'ltr' ],
-//   [ 10000,  16000, 400, 'circle' ],
-//   [ 17800,  20000, 500, 'straight', { x: 50 } ],
-//   [ 18200,  20000, 500, 'straight', { x: 90 } ],
-//   [ 18200,  20000, 500, 'straight', { x: 10 } ],
-//   [ 22000,  25000, 400, 'wiggle', { x: 150 }],
-//   [ 22000,  25000, 400, 'wiggle', { x: 100 }]
-// ];
+var screen = 0;
 
 // Creates all boards
 var startGame = function() {
   const ua = navigator.userAgent.toLowerCase();
 
   initAll();
-  Game.activateBoard(BoardType.TITLE);
+  if (screen === 0) Game.activateBoard(BoardType.TITLE);
+  else playGame();
 };
 
 var initAll = function() {
@@ -63,11 +54,11 @@ var initAll = function() {
   Game.setBoard(BoardType.TITLE, title);
 
   const victory = new GameBoard();
-  victory.add(new TitleScreen("You win!", "Press SPACE to play again", playGame));
+  victory.add(new TitleScreen("You win!", "Press SPACE to play again", startGame));
   Game.setBoard(BoardType.VICTORY, victory);
 
   const loss = new GameBoard();
-  loss.add(new TitleScreen("You lose!", "Press SPACE to try again", playGame));
+  loss.add(new TitleScreen("You lose!", "Press SPACE to try again", startGame));
   Game.setBoard(BoardType.LOSS, loss);
 
   const scenario = new GameBoard();
@@ -89,10 +80,10 @@ var initAll = function() {
   board.add(new Player());
   // Spawner
   const r = 2;
-  board.add(new Spawner(clientPos[0], 1, 1 + r*0))
-  board.add(new Spawner(clientPos[1], 1, 1 + r*1))
-  board.add(new Spawner(clientPos[3], 1, 2 + r*1))
-  board.add(new Spawner(clientPos[2], 2, 1 + r*2))
+  board.add(new Spawner(clientPos[0], 2, 1 + r*4));
+  board.add(new Spawner(clientPos[1], 2, 1 + r*1)); 
+  board.add(new Spawner(clientPos[2], 2, 2 + r*2));
+  board.add(new Spawner(clientPos[3], 3, 1 + r*2));
 
   Game.setBoard(BoardType.ENTITIES, board);
 
@@ -127,11 +118,13 @@ var playGame = function() {
 var winGame = function() {
   deactivateGame();
   Game.activateBoard(BoardType.VICTORY);
+  screen++;
 };
 
 var loseGame = function() {
   deactivateGame();
   Game.activateBoard(BoardType.LOSS);
+  screen++;
 }
 
 var Scenario = function() {
@@ -164,10 +157,10 @@ var Player = function() {
     else if(Game.keys['Up'] && this.x === playerPos.Lane3.x && this.cooldown < 0) { this.x = playerPos.Lane2.x; this.y = playerPos.Lane2.y;  this.cooldown = this.spd;}
     else if(Game.keys['Up'] && this.x === playerPos.Lane4.x && this.cooldown < 0) { this.x = playerPos.Lane3.x; this.y = playerPos.Lane3.y;  this.cooldown = this.spd;}
     // Beers
-    else if(Game.keys['Space'] && this.x === playerPos.Lane1.x && this.beerCooldown < 0) { this.board.add(new Beer(this.x, this.y, 33)); this.beerCooldown = this.beerSpd;}                                                                                            
-    else if(Game.keys['Space'] && this.x === playerPos.Lane2.x && this.beerCooldown < 0) { this.board.add(new Beer(this.x, this.y, 33)); this.beerCooldown = this.beerSpd;}                                                                                          
-    else if(Game.keys['Space'] && this.x === playerPos.Lane3.x && this.beerCooldown < 0) { this.board.add(new Beer(this.x, this.y, 33)); this.beerCooldown = this.beerSpd;}                                                                                           
-    else if(Game.keys['Space'] && this.x === playerPos.Lane4.x && this.beerCooldown < 0) { this.board.add(new Beer(this.x, this.y, 33)); this.beerCooldown = this.beerSpd;}
+    else if(Game.keys['Space'] && this.x === playerPos.Lane1.x && this.beerCooldown < 0) { this.board.add(new Beer(this.x, this.y, 33)); this.beerCooldown = this.beerSpd; }                                                                                            
+    else if(Game.keys['Space'] && this.x === playerPos.Lane2.x && this.beerCooldown < 0) { this.board.add(new Beer(this.x, this.y, 33)); this.beerCooldown = this.beerSpd; }                                                                                          
+    else if(Game.keys['Space'] && this.x === playerPos.Lane3.x && this.beerCooldown < 0) { this.board.add(new Beer(this.x, this.y, 33)); this.beerCooldown = this.beerSpd; }                                                                                           
+    else if(Game.keys['Space'] && this.x === playerPos.Lane4.x && this.beerCooldown < 0) { this.board.add(new Beer(this.x, this.y, 33)); this.beerCooldown = this.beerSpd; }
                                                                                            
   };
 };
@@ -193,7 +186,7 @@ var Beer = function(x, y, vx) {
     }
     else if(collisionDeadZone) {
       GameManager.notifyDead();
-      this.board.remove(this); 
+      this.board.remove(this);
     }
   };
 };
@@ -292,29 +285,27 @@ var GameManager = new function() {
   this.dead = 0;
 
   this.reset = function() {
-    this.npcs = 0;
     this.glasses = 0;
     this.dead = 0;
   };
-  this.reset();
 
   this.notifyClients = function(n) {
     this.npcs += n;
   };
 
   this.notifyGlasses = function() {
-    this.glasses++;
+    ++this.glasses;
     this.check();
   };
 
   this.notifyServed = function() {
-    this.glasses--;
-    this.npcs--;
+    --this.glasses;
+    --this.npcs;
     this.check();
   };
 
   this.notifyDead = function() {
-    this.dead++;
+    ++this.dead;
     this.check();
   };
 
